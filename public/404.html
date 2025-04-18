@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>404 Redirect</title>
+  <script>
+    // Redirects 404s to correct paths for GitHub Pages path issues
+    (function() {
+      var pathSegmentsToKeep = 1;
+      var l = window.location;
+      var redirectPath = l.pathname.split('/').slice(0, pathSegmentsToKeep + 1).join('/') + '/';
+      
+      // Check if this is a CSS or JS file
+      if (l.pathname.includes('/_next/static/')) {
+        // Redirect to the correct location
+        var newPath = '/error-signature-finder' + l.pathname;
+        l.replace(
+          l.protocol + '//' + l.hostname + newPath + l.search + l.hash
+        );
+      } else {
+        // Redirect to home page
+        l.replace(
+          l.protocol + '//' + l.hostname + redirectPath + 
+          (l.pathname.slice(redirectPath.length).split('/').length ? 
+          'error-signature-finder/' : '') +
+          l.search + l.hash
+        );
+      }
+    })();
+  </script>
+</head>
+<body>
+  <h1>Redirecting...</h1>
+</body>
+</html> 
