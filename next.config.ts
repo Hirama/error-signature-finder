@@ -11,7 +11,7 @@ const nextConfig = {
     unoptimized: true, // Required for static export
   },
   // Ensure browser-only packages don't run on the server
-  webpack: (config, { isServer }) => {
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
     if (isServer) {
       config.externals = [...(config.externals || []), '@solidity-parser/parser'];
     }

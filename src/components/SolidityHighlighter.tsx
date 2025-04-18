@@ -92,7 +92,7 @@ export function SolidityHighlighter({
       }
     } else if (allErrors.length > 0) {
       // Show areas around errors
-      const errorSections = [];
+      const errorSections: string[] = [];
       const addedLines = new Set<number>();
       
       // Add first few lines
