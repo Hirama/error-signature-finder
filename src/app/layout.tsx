@@ -17,24 +17,26 @@ export default function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#4f46e5" />
         <link rel="icon" href="/favicon.ico" />
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            // Check for dark mode preference
-            if (localStorage.theme === 'dark' || 
-                (!('theme' in localStorage) && 
-                window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-              document.documentElement.classList.add('dark');
-              document.documentElement.classList.remove('light');
-            } else {
-              document.documentElement.classList.remove('dark');
-              document.documentElement.classList.add('light');
-            }
-          `
-        }} />
+        {/* Script to handle dark mode preference */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                // On page load or when changing themes, check user preference
+                const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (isDarkMode) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              })();
+            `,
+          }}
+        />
       </head>
-      <body className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

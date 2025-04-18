@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface SolidityHighlighterProps {
   code: string;
@@ -17,6 +17,11 @@ export function SolidityHighlighter({
 }: SolidityHighlighterProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Reset expanded state when code changes
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [code]);
+
   // Basic regex patterns for Solidity syntax
   const keywordPattern = /\b(contract|error|function|address|uint256|string|bytes|bool|if|else|for|while|struct|mapping|public|private|external|internal|pure|view|returns|memory|storage|calldata|payable|modifier|import|pragma|solidity|interface)\b/g;
   const commentPattern = /\/\/.*?$|\/\*[\s\S]*?\*\//gm;
@@ -24,20 +29,15 @@ export function SolidityHighlighter({
   const numberPattern = /\b\d+\b/g;
   const errorNamePattern = /error\s+([A-Za-z0-9_]+)/g;
   
-  // Extract all error definitions for smart display
-  const findAllErrors = (sourceCode: string) => {
+  // Memoize the extraction of errors to avoid recalculating on each render
+  const allErrors = useMemo(() => {
     const errorRegex = /error\s+([A-Za-z0-9_]+)\s*\([^)]*\)/g;
-    const matches = [...sourceCode.matchAll(errorRegex)];
+    const matches = [...code.matchAll(errorRegex)];
     return matches.map(match => ({
       name: match[1],
       fullMatch: match[0],
       index: match.index || 0
     }));
-  };
-  
-  // By default, start not expanded
-  useEffect(() => {
-    setIsExpanded(false);
   }, [code]);
 
   // Function to highlight error definition with the given name
@@ -51,9 +51,6 @@ export function SolidityHighlighter({
       return `<span class="bg-yellow-200 dark:bg-yellow-900 px-1 rounded">${match}</span>`;
     });
   };
-
-  // Get all errors from the code
-  const allErrors = findAllErrors(code);
   
   // Split the code into lines
   const lines = code.split('\n');
@@ -62,9 +59,11 @@ export function SolidityHighlighter({
   const shouldTruncate = !isExpanded && lines.length > maxLines;
   
   // Get code to display based on truncation state
-  let displayCode = '';
-  
-  if (shouldTruncate) {
+  const displayCode = useMemo(() => {
+    if (!shouldTruncate) {
+      return code;
+    }
+
     if (highlightError) {
       // If we have a specific error to highlight
       const targetError = allErrors.find(err => err.name === highlightError);
@@ -77,26 +76,23 @@ export function SolidityHighlighter({
         const endLine = Math.min(lines.length, lineNumberUpToError + contextLines + 1);
         
         // Create the displayed content with headers
-        displayCode = [
-          ...lines.slice(0, 5), // First 5 lines
+        return [
+          ...lines.slice(0, 3), // First 3 lines
           '/* ... */',
           ...lines.slice(startLine, endLine),
           '/* ... */'
         ].join('\n');
-      } else {
-        // If error not found, show default truncated view
-        displayCode = [
-          ...lines.slice(0, maxLines),
-          '/* ... */'
-        ].join('\n');
       }
-    } else if (allErrors.length > 0) {
+    }
+    
+    // If no specific error to highlight or it wasn't found
+    if (allErrors.length > 0) {
       // Show areas around errors
       const errorSections: string[] = [];
       const addedLines = new Set<number>();
       
       // Add first few lines
-      for (let i = 0; i < 5 && i < lines.length; i++) {
+      for (let i = 0; i < 3 && i < lines.length; i++) {
         addedLines.add(i);
       }
       
@@ -124,42 +120,39 @@ export function SolidityHighlighter({
       });
       
       // Combine the displayCode
-      displayCode = [
-        ...Array.from(addedLines).filter(i => i < 5).map(i => lines[i]),
+      return [
+        ...Array.from(addedLines).filter(i => i < 3).map(i => lines[i]),
         '/* ... */',
         ...errorSections,
         '/* ... */'
       ].join('\n');
-    } else {
-      // Default truncation if no errors
-      displayCode = [
-        ...lines.slice(0, maxLines),
-        '/* ... */'
-      ].join('\n');
     }
-  } else {
-    // Show full code
-    displayCode = code;
-  }
+    
+    // Default truncation if no errors
+    return [
+      ...lines.slice(0, maxLines),
+      '/* ... */'
+    ].join('\n');
+  }, [code, shouldTruncate, highlightError, allErrors, contextLines, lines, maxLines]);
 
-  // First handle line breaks to preserve them in the HTML
-  let processedCode = displayCode.replace(/\n/g, '<br />');
-  
-  // Now process the code with proper escaping
-  let highlightedCode = processedCode
-    // Escape HTML special characters
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    // Add back the line breaks we replaced
-    .replace(/&lt;br \/&gt;/g, '<br />');
-  
-  // Apply syntax highlighting in the correct order
-  const applyHighlighting = (input: string) => {
+  // Process the code for display with syntax highlighting
+  const processedCode = useMemo(() => {
+    // First handle line breaks to preserve them in the HTML
+    let processedCode = displayCode.replace(/\n/g, '<br />');
+    
+    // Now process the code with proper escaping
+    let highlightedCode = processedCode
+      // Escape HTML special characters
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Add back the line breaks we replaced
+      .replace(/&lt;br \/&gt;/g, '<br />');
+    
     // Store segments to preserve their order (comments, strings, etc.)
     const segments: {pattern: string, className: string}[] = [];
     
     // Process comments first (they might contain keywords)
-    let commentMatched = input.match(commentPattern);
+    let commentMatched = highlightedCode.match(commentPattern);
     if (commentMatched) {
       commentMatched.forEach(match => {
         segments.push({
@@ -170,7 +163,7 @@ export function SolidityHighlighter({
     }
     
     // Process strings (they might contain keywords too)
-    let stringMatched = input.match(stringPattern);
+    let stringMatched = highlightedCode.match(stringPattern);
     if (stringMatched) {
       stringMatched.forEach(match => {
         segments.push({
@@ -181,7 +174,7 @@ export function SolidityHighlighter({
     }
     
     // Replace each segment with a placeholder, then restore after highlight
-    let result = input;
+    let result = highlightedCode;
     const placeholders: {[key: string]: string} = {};
     
     segments.forEach((segment, i) => {
@@ -207,34 +200,55 @@ export function SolidityHighlighter({
     
     // Format truncation markers
     result = result.replace(/\/\* \.\.\. \*\//g, 
-      '<span class="block py-1 border-t border-b border-gray-300 dark:border-gray-600 my-1 text-center text-gray-500 dark:text-gray-400">...</span>');
+      '<span class="block py-1 border-t border-b border-gray-300 dark:border-gray-600 my-1 text-center text-gray-500 dark:text-gray-400 text-xs">...</span>');
+    
+    // Highlight specific error if provided
+    if (highlightError) {
+      result = highlightErrorDef(result, highlightError);
+    }
     
     return result;
-  };
-  
-  highlightedCode = applyHighlighting(highlightedCode);
-  
-  // Highlight specific error if provided
-  if (highlightError) {
-    highlightedCode = highlightErrorDef(highlightedCode, highlightError);
-  }
+  }, [displayCode, highlightError]);
+
+  // Calculate line count for button text
+  const lineCountText = useMemo(() => {
+    if (lines.length <= maxLines) return '';
+    if (lines.length < 100) return `Show All (${lines.length})`;
+    if (lines.length < 1000) return `Show All (${lines.length}, large)`;
+    return 'Show All (very large file)';
+  }, [lines.length, maxLines]);
   
   return (
-    <div className="rounded-md overflow-hidden">
-      <pre className="bg-gray-100 dark:bg-gray-800 p-4 overflow-x-auto text-sm font-mono text-gray-800 dark:text-gray-200">
-        <code dangerouslySetInnerHTML={{ __html: highlightedCode }} />
-      </pre>
-      
-      {lines.length > maxLines && (
-        <div className="flex justify-end mt-2">
+    <div className="rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">Solidity Code</div>
+        {lines.length > maxLines && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex items-center"
           >
-            {isExpanded ? "Show Less" : `Show All (${lines.length} lines)`}
+            {isExpanded ? (
+              <>
+                <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                Show Less
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                {lineCountText}
+              </>
+            )}
           </button>
-        </div>
-      )}
+        )}
+      </div>
+      
+      <pre className="bg-gray-50 dark:bg-gray-900 p-4 overflow-x-auto text-sm font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+        <code dangerouslySetInnerHTML={{ __html: processedCode }} />
+      </pre>
     </div>
   );
 } 
