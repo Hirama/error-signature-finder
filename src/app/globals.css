@@ -2,30 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-/* Remove inline theme since it's causing issues */
-/* 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-*/
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Custom CSS for Solidity Error Finder */
+/* The following styles will be overridden by Tailwind classes */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Basic styling only - no Tailwind directives */
+code {
+  background-color: #f3f4f6;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.dark code {
+  background-color: #1f2937;
+}
+
+/* Form elements */
+input, textarea {
+  background-color: white;
+}
+
+.dark input, .dark textarea {
+  background-color: #1f2937;
+}
+
+/* File upload button styling */
+input[type="file"]::-webkit-file-upload-button {
+  background-color: #e5e7eb;
+  border: 0;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  margin-right: 0.75rem;
+}
+
+.dark input[type="file"]::-webkit-file-upload-button {
+  background-color: #374151;
 }

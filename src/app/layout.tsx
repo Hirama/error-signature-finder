@@ -19,6 +19,20 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
         <link rel="icon" href="/favicon.ico" />
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Check for dark mode preference
+            if (localStorage.theme === 'dark' || 
+                (!('theme' in localStorage) && 
+                window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              document.documentElement.classList.add('dark');
+              document.documentElement.classList.remove('light');
+            } else {
+              document.documentElement.classList.remove('dark');
+              document.documentElement.classList.add('light');
+            }
+          `
+        }} />
       </head>
       <body className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">{children}</body>
     </html>
